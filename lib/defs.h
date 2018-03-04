@@ -60,6 +60,11 @@ struct sniff_udp {
 	short len;
 	u_short udp_sum;
 };
+struct tcp_opt{
+	u_short th_kind;
+	u_short th_len;
+	u_short th_shift;
+};
 struct sniff_tcp {
         u_short th_sport;               /* source port */
         u_short th_dport;               /* destination port */
