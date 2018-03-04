@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <set>
+#include <vector>
 #include <unordered_map>
 using namespace std;
 
@@ -20,10 +21,14 @@ typedef struct flow{
 	struct timeval syn_stamp;
 	long bytes_sent;
 	uint32_t packets_sent;
+	uint32_t packets_rcvd;
 	uint32_t re_trans;
+	uint32_t fre_trans;
+	uint32_t icwnd;
 	long rtt;
-	set<uint32_t> seq_map;
-	set<uint32_t> ack_map;
+	unordered_map<uint32_t, int> seq_map;
+	unordered_map<uint32_t, int> ack_map;
+	vector<int> wnd_sizes;
 
 }flow;
 
@@ -75,9 +80,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					flow_init->dst_port = dst_port;
 					flow_init->flags = TH_SYN;
 					flow_init->trans_seen = 0;
-					flow_init->bytes_sent = 0;	
-					flow_init->packets_sent = 0;
+					flow_init->bytes_sent = 0; //TODO Fix This	
+					flow_init->packets_sent = 1;
+					flow_init->packets_rcvd = 0;
 					flow_init->re_trans = 0;
+					flow_init->fre_trans = 0;
 					const time_t *pkt_time = (time_t *)(&header->ts.tv_usec);
 					flow_init->syn_stamp = header->ts;	
 					
@@ -87,6 +94,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 				else if ((tcp->th_flags & TH_ACK) && flow_mon.count(src2dst) && flow_mon[src2dst]->flags == (TH_SYN)){ // Ack to SYN-ACK. (First ACK from src2dst)
 						flow_mon[src2dst]->flags |= TH_ACK;
 
+						flow_mon[src2dst]->packets_sent += 1;
+
 						struct timeval end_stamp = (header->ts);
 						flow_mon[src2dst]->rtt = (end_stamp.tv_sec - flow_mon[src2dst]->syn_stamp.tv_sec)*1000000L 
 								+ (end_stamp.tv_usec - flow_mon[src2dst]->syn_stamp.tv_usec); 	
@@ -94,7 +103,10 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 				}
 				else if ((tcp->th_flags & TH_ACK)){ // Handshake done. Transaction Packet
 						
-						if (flow_mon.count(src2dst) && flow_mon[src2dst]->flags == (TH_SYN | TH_ACK)){ // Data Sender
+						if (flow_mon.count(dst2src) && flow_mon[dst2src]->flags == TH_SYN && tcp->th_flags == (TH_SYN | TH_ACK)){ // SYN-ACK RCVD
+							flow_mon[dst2src]->packets_rcvd += 1;
+						}
+						else if (flow_mon.count(src2dst) && flow_mon[src2dst]->flags == (TH_SYN | TH_ACK)){ // Data Sender
 								flow* curr_flow = flow_mon[src2dst];
 
 								flow_mon[src2dst]->packets_sent += 1;
@@ -117,21 +129,38 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 										flow_mon[src2dst]->trans_seen += 1;
 								}
 								
-								if (flow_mon[src2dst]->seq_map.count(seq_n) > 0)	
+								if (flow_mon[src2dst]->seq_map.count(seq_n) > 0){	
 										flow_mon[src2dst]->re_trans++;
+										if (flow_mon[src2dst]->ack_map.count(seq_n) && flow_mon[src2dst]->ack_map[seq_n] > 3)
+											flow_mon[src2dst]->fre_trans++;
+								}
 								else
-										flow_mon[src2dst]->seq_map.insert(seq_n);
+										flow_mon[src2dst]->seq_map[seq_n] = 1;
 
 						}
 						else if (flow_mon.count(dst2src) && flow_mon[dst2src]->flags == (TH_SYN | TH_ACK)){ // Data Receiver
 								
-								flow_mon[dst2src]->packets_sent += 1;
+								if (flow_mon[dst2src]->packets_rcvd == 1){ // Only SNY-ACK RCVD
+									flow_mon[dst2src]->icwnd = flow_mon[dst2src]->packets_sent - 2;
+									cout << "CWND 0: " << flow_mon[dst2src]->icwnd << endl;
+									flow_mon[dst2src]->wnd_sizes.push_back(flow_mon[dst2src]->icwnd);
+							//		flow_mon[dst2src]->curr
+								}
+								else if (flow_mon[dst2src]->packets_rcvd > 1 && flow_mon[dst2src]->wnd_sizes.size() < 5){
+									int curr_idx = flow_mon[dst2src]->wnd_sizes.size();
+									flow_mon[dst2src]->wnd_sizes.push_back(flow_mon[dst2src]->wnd_sizes[curr_idx - 1] + 1);
+									cout << "CWND " << curr_idx << ": " << flow_mon[dst2src]->wnd_sizes[curr_idx] << endl;	
+								}
+
+								flow_mon[dst2src]->packets_rcvd += 1;
 								
 								uint32_t ack_n = (uint32_t)ntohl(tcp->th_ack);
-								if (flow_mon[dst2src]->ack_map.count(ack_n) > 0) // Response Retransmission
-										flow_mon[dst2src]->re_trans += 1;
+								if (flow_mon[dst2src]->ack_map.count(ack_n) > 0){ // Response Retransmission
+			//							flow_mon[dst2src]->re_trans += 1;
+										flow_mon[dst2src]->ack_map[ack_n] += 1;
+								}
 								else
-										flow_mon[dst2src]->ack_map.insert(ack_n);
+										flow_mon[dst2src]->ack_map[ack_n] = 1;
 						}
 				}
 
@@ -141,6 +170,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					double loss_rate = flow_mon[src2dst]->re_trans / (double)flow_mon[src2dst]->packets_sent;
 					double emp_through = (1460*(sqrt(3/2.0)))/((flow_mon[src2dst]->rtt)*sqrt(loss_rate));
 					cout << "Loss Rate: " << loss_rate << endl;
+					cout << "Fast Retransmissions: " << flow_mon[src2dst]->fre_trans << endl;
+					cout << "Timeouts: " << flow_mon[src2dst]->re_trans - flow_mon[src2dst]->fre_trans << endl;
 					cout << "Empirical Throughput: " << emp_through << "Mbps" << endl;
 					cout << "Theoretical Throughput: " << flow_mon[src2dst]->bytes_sent/(double)flow_mon[src2dst]->rtt << "Mbps" << endl << endl;
 					flow_mon.erase(src2dst);
