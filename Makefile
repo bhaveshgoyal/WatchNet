@@ -1,5 +1,3 @@
 all:
-	g++ -lpcap -I./lib anal.cpp -o anal
-
-ht:
-	g++ -lpcap -I./lib http.cpp -o http
+	g++ -lpcap -I./lib analysis_pcap_tcp.cpp -o tcp_analyze
+	g++ -lpcap -I./lib analysis_pcap_http.cpp -o http_analyze
