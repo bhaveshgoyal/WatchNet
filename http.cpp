@@ -263,7 +263,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 						}
 						idx = response.find("\r\n\r\n");
 						if (idx > 0){
-							out_buff << BOLD(FBLU("RESPONSE: ")) << response.substr(0, idx) << endl << endl;
+							out_buff << BOLD(FGRN("RESPONSE: ")) << response.substr(0, idx) << endl << endl;
 						}
 						if (it->second->seg_len > 0)
 							out_buff << "Segments Found: " << it->second->seg_len << endl << endl;
@@ -291,7 +291,20 @@ int main(int argc, char **argv){
 
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	string fname = "myhttp.pcap";
+	string fname = "http_1080.pcap";
+	if (argc == 3){
+		if (strcmp("-r", argv[1]) == 0)
+			fname = argv[2];	
+		else{
+			cout << "Invalid Option. usage: [-r] file-name" << endl;
+			exit(0);
+		}
+	}
+	else if (argc != 1){
+		cout << "Error. usage: [-r] file-name" << endl;
+		exit(0);
+	
+	}
 
 	handle = pcap_open_offline(fname.c_str(), errbuf);
 	if (!handle){
@@ -301,9 +314,10 @@ int main(int argc, char **argv){
 
 	pcap_loop(handle, -1, packet_handler, NULL);
 	pcap_close(handle);
-
+	
+	cout << endl;
 	if (flow_count > 6){
-		cout << BOLD("HTTP Version: /1.0") << endl << endl;
+		cout << UNDL(BOLD("HTTP Version: /1.0")) << endl << endl;
 		cout << out_buff.str();	
 	}
 	else if (flow_count == 6){
