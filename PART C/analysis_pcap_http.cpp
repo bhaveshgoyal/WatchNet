@@ -127,6 +127,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					
 					long curr_seq = ntohl(tcp->th_seq);
 		//			cout << "CURR SEQ: " << curr_seq << endl;
+					if (cap_len > 0){
 					seq *seq_node = new seq;
 					seq_node->curr_seq = curr_seq;
 					seq_node->count = 1;
@@ -144,7 +145,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					seq_node->resp_len = 0;
 					flow_init->rtt_map[seq_node->next_ack] = seq_node;
 					flow_init->seq_map[curr_seq] = seq_node;
-					
+					}
 					flow_init->syn_stamp = header->ts;	
 					
 					flow_mon[src2dst] = flow_init;
@@ -184,7 +185,6 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 								}
 								else{
 											if (cap_len > 0){
-											int cap_len = header->len - ETHER_SIZE - ip_size - tcp_size;
 											seq *seq_node = new seq;
 											seq_node->count = 1;
 											seq_node->next_ack = seq_n + header->len - ETHER_SIZE - ip_size - tcp_size;
@@ -192,8 +192,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 											seq_node->ts_sec = header->ts.tv_sec;
 											seq_node->ts_usec = header->ts.tv_usec;
 											seq_node->seg_len = 0;
-												seq_node->req = (char*)packet;
-												seq_node->req_len = 10; // Non Zero;
+											seq_node->req = (char*)packet;
+											seq_node->req_len = 10; // Non Zero;
 											seq_node->resp_len = 0;
 											flow_mon[src2dst]->rtt_map[seq_node->next_ack] = seq_node;
 											flow_mon[src2dst]->seq_map[seq_n] = seq_node;
@@ -207,8 +207,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 								uint32_t res_ack = (uint32_t)ntohl(tcp->th_ack);
 								
+								int cap_len = header->len - ETHER_SIZE - ip_size - tcp_size;
 								if (cap_len > 0 && flow_mon[dst2src]->rtt_map.count(res_ack) > 0){ //Update RTT
-//									cout << "RESPONSE: " << packet << endl;
 
 									if (flow_mon[dst2src]->rtt_map[res_ack]->resp_len == 0){	
 										flow_mon[dst2src]->rtt_map[res_ack]->resp = (char*)packet;
@@ -224,9 +224,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 										resp_n->seq_num = ntohl(tcp->th_seq);
 										resp_n->ack_num = res_ack;
 
-										int seg_len = flow_mon[dst2src]->rtt_map[res_ack]->seg_len;
 										flow_mon[dst2src]->rtt_map[res_ack]->segs.push_back(resp_n);
-										flow_mon[dst2src]->rtt_map[res_ack]->seg_len = flow_mon[dst2src]->rtt_map[res_ack]->segs.size();
+										flow_mon[dst2src]->rtt_map[res_ack]->seg_len += 1;
 									}
 
 				//					struct timeval end_stamp = (header->ts);

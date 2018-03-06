@@ -43,6 +43,7 @@ typedef struct flow{
 	int send_trans_seen;
 	int rcv_trans_seen;
 	struct timeval syn_stamp;
+	struct timeval fin_stamp;
 	long bytes_sent;
 	uint32_t packets_sent;
 	uint32_t packets_rcvd;
@@ -246,11 +247,15 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 
 				if ((tcp->th_flags & TH_FIN) && flow_mon.count(src2dst)){ // FIN from Sender. Successful Flow seen
-					long rtt_net = 0;
+					double rtt_net = 0;
 					long rtt_cnt = 0;
 
 					unordered_map<uint32_t, seq*>::iterator it;
 					
+					flow_mon[src2dst]->fin_stamp = header->ts;
+					long duration = (flow_mon[src2dst]->fin_stamp.tv_sec - flow_mon[src2dst]->syn_stamp.tv_sec)*1000000L 
+																				+ (flow_mon[src2dst]->fin_stamp.tv_usec - flow_mon[src2dst]->syn_stamp.tv_usec); 	
+
 					for(it = flow_mon[src2dst]->rtt_map.begin(); it != flow_mon[src2dst]->rtt_map.end(); it++){
 						if (it->second->rtt != 0)
 							rtt_cnt += 1;
@@ -276,7 +281,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 						out_buff << "\tAdvertised Window to Receiver:\t" << tx->rcv_wnd << endl;	
 					}
 					out_buff << "Flow Terminated b/w (S/R): " << src_port << "/" << dst_port << endl;
-					double loss_rate = flow_mon[src2dst]->re_trans / (double)flow_mon[src2dst]->packets_sent;
+					double loss_rate = flow_mon[src2dst]->re_trans / (double)(flow_mon[src2dst]->packets_sent - 2);
 					double th_through = 0;
 					out_buff << "RTT: " << flow_mon[src2dst]->rtt << " microsec" << endl;
 					out_buff << "Loss Rate: " << loss_rate << endl;
@@ -288,7 +293,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					}
 					else
 						out_buff << "Theoretical Throughput: infinity" << " Mbps" << endl;
-					out_buff << "Empirical Throughput: " << (((flow_mon[src2dst]->bytes_sent - flow_mon[src2dst]->re_trans_size)*8))/((double)flow_mon[src2dst]->rtt) << " Mbps" << endl;
+					out_buff << "Empirical Throughput: " << (((flow_mon[src2dst]->bytes_sent - flow_mon[src2dst]->re_trans_size)*8))/((double)duration) << " Mbps" << endl;
 					out_buff << FRED("Congestion Window Sizes:") << endl;
 					for(int i = 0; i < flow_mon[src2dst]->wnd_sizes.size(); i++){
 						if (!i)

@@ -26,7 +26,7 @@ chmod +x ./http_analysis
 
 The Program when run in TCP mode, narrows down the number of TCP streams running in the dump and prints out header information for
 first two transactions after handshake has been established. The throughput across the network is calculate as a function of effective
-bytes sent over the network per RTT and an analysis on the loss rate on the wire is also provided. Since, the dump is assumed to be taken
+bytes sent over the network divides total time taken to send packets and an analysis on the loss rate on the wire is also provided. Since, the dump is assumed to be taken
 on a single machine the program also calculates average RTT time for a TCP connection by analyzing entire stream with their individual RTTs.
 Using the results, the program provides a performance analysis of the throughput aquired with the max theoretical throughput achievable across
 the network.
@@ -45,7 +45,7 @@ corresponding to the anticipated ACK is seen, a transaction is said to be comple
 well as the Advertised Window Sizes by either side. Since, TCP options specify the window scale option to determine the actual scaling factor for window size,
 the factor was found to be 16384 (Shift Value of 14). Along with recording transactions, each of the requests were also stored to provide an average estimate
 of RTTs. The stream was seen to have ended when a FIN to open stream was seen. At this point, an aggregate analysis is performed to estimate Average RTT and
-throughput values. The Empirical Throughput was calculated as effective number of bytes transmitted (no. of bytes transmitted - no. of bytes retransmitted) per RTT.
+throughput values. The Empirical Throughput was calculated as effective number of bytes transmitted (no. of bytes transmitted - no. of bytes retransmitted) / Time taken by bytes transmission.
 This was compared to the Theoretical Throughput value achievable as a function of (MSS, LossRate, RTT). It was seen that indeed empirical throughput fell well below
 theoretical limit which seems to be understandable. Moreover, more lossy networks were seen to have lower empirical throughput values, which is indeed understandable.
 
