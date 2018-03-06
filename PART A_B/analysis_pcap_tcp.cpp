@@ -291,12 +291,14 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					out_buff << "Fast Retransmissions: " << flow_mon[src2dst]->fre_trans << endl;
 					out_buff << "Timeouts (Due to TDA): " << flow_mon[src2dst]->re_trans - flow_mon[src2dst]->fre_trans << endl;
 					if (loss_rate != 0){
-						th_through = (8*1460*(sqrt(3/2.0)))/((flow_mon[src2dst]->rtt)*sqrt(loss_rate));
+						th_through = (sqrt(3/2)*1460*8)/(flow_mon[src2dst]->rtt*sqrt((float)(flow_mon[src2dst]->re_trans)/(float)(flow_mon[src2dst]->packets_sent)));
 						out_buff << "Theoretical Throughput: " << th_through << " Mbps" << endl;
 					}
 					else
 						out_buff << "Theoretical Throughput: infinity" << " Mbps" << endl;
+					
 					out_buff << "Empirical Throughput: " << (((flow_mon[src2dst]->bytes_sent - flow_mon[src2dst]->re_trans_size)*8))/((double)duration) << " Mbps" << endl;
+					out_buff << "Duration: " << duration << endl;
 					out_buff << FRED("Congestion Window Sizes:") << endl;
 					for(int i = 0; i < flow_mon[src2dst]->wnd_sizes.size(); i++){
 						if (!i)

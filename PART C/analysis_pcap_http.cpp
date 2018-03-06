@@ -112,7 +112,7 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 				
 				
 				int cap_len = header->len - ETHER_SIZE - ip_size - tcp_size;
-				if ((tcp->th_flags & TH_SYN) && !(tcp->th_flags & TH_ACK) && !flow_mon.count(src2dst)){ // Get First Seen SYNs
+				if ((tcp->th_flags == TH_SYN) && !(tcp->th_flags & TH_ACK) && !flow_mon.count(src2dst)){ // Get First Seen SYNs
 					flow_count++;			
 					flow *flow_init = new flow;
 					flow_init->src_port = src_port;
