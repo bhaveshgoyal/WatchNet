@@ -206,9 +206,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 								if (flow_mon[dst2src]->rtt_map.count(res_ack)){ //Update RTT
 									
+									if (flow_mon[dst2src]->rtt_map[res_ack]->rtt == 0){
 									struct timeval end_stamp = (header->ts);
 									flow_mon[dst2src]->rtt_map[res_ack]->rtt = (end_stamp.tv_sec - flow_mon[dst2src]->rtt_map[res_ack]->ts_sec)*1000000L 
 																				+ (end_stamp.tv_usec - flow_mon[dst2src]->rtt_map[res_ack]->ts_usec); 	
+									}
 									if (curr_flow->rcv_trans_seen < 2){
 										int rcv_trans_seen = flow_mon[dst2src]->rcv_trans_seen;		
 										flow_mon[dst2src]->transactions[rcv_trans_seen]->rcv_seq_num = to_string(ntohl(tcp->th_seq));
@@ -262,7 +264,8 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 					}
 					
 					for(it = flow_mon[src2dst]->rtt_map.begin(); it != flow_mon[src2dst]->rtt_map.end(); it++){
-						rtt_net += ((it->second->rtt)/(double)rtt_cnt);
+						if (it->second->rtt != 0)
+							rtt_net += ((it->second->rtt)/(double)rtt_cnt);
 					}
 
 					flow_mon[src2dst]->rtt = rtt_net;

@@ -319,14 +319,14 @@ int main(int argc, char **argv){
 		cout << UNDL(BOLD("HTTP Version: /1.0")) << endl << endl;
 		cout << out_buff.str();	
 	}
-	else if (flow_count == 6){
-		cout << BOLD("------------------") << endl << endl;
-		cout << BOLD("HTTP Version: /1.1") << endl << endl;
-		cout << BOLD("------------------") << endl << endl;
-	}
-	else if (flow_count < 3){
+	else if (flow_count == 1){
 		cout << BOLD("------------------") << endl << endl;
 		cout << BOLD("HTTP Version: /2.0") << endl << endl;
+		cout << BOLD("------------------") << endl << endl;
+	}
+	else if (flow_count <= 6){
+		cout << BOLD("------------------") << endl << endl;
+		cout << BOLD("HTTP Version: /1.1") << endl << endl;
 		cout << BOLD("------------------") << endl << endl;
 	}
 	return 0;

@@ -28,7 +28,7 @@ The Program when run in TCP mode, narrows down the number of TCP streams running
 first two transactions after handshake has been established. The throughput across the network is calculate as a function of effective
 bytes sent over the network divides total time taken to send packets and an analysis on the loss rate on the wire is also provided. Since, the dump is assumed to be taken
 on a single machine the program also calculates average RTT time for a TCP connection by analyzing entire stream with their individual RTTs.
-Using the results, the program provides a performance analysis of the throughput aquired with the max theoretical throughput achievable across
+Using the results, the program provides a performance analysis of the empirical throughput acquired with the theoretical throughput achievable across
 the network.
 Note: If any argument to HTTP analyzer is not provided, then the program defaults to using provided sample http\_1080.pcap file.
 
@@ -46,17 +46,22 @@ well as the Advertised Window Sizes by either side. Since, TCP options specify t
 the factor was found to be 16384 (Shift Value of 14). Along with recording transactions, each of the requests were also stored to provide an average estimate
 of RTTs. The stream was seen to have ended when a FIN to open stream was seen. At this point, an aggregate analysis is performed to estimate Average RTT and
 throughput values. The Empirical Throughput was calculated as effective number of bytes transmitted (no. of bytes transmitted - no. of bytes retransmitted) / Time taken by bytes transmission.
-This was compared to the Theoretical Throughput value achievable as a function of (MSS, LossRate, RTT). It was seen that indeed empirical throughput fell well below
-theoretical limit which seems to be understandable. Moreover, more lossy networks were seen to have lower empirical throughput values, which is indeed understandable.
+This was compared to the Theoretical Throughput value achievable as a function of (MSS, LossRate, RTT). It was seen that in contrast to common belief, empirical throughput fell well above
+theoretical limit. This could be attributed to the limit of Theoretical throughput w.r.t. the TCP Window size. Additionally, we might have been encountering a local maxima in the throughput values.
+To provide a holistic view of empirical throughput we might need to consider longer data streams to improve the overall average and only include packets in one sliding window size
+per its latency, as supposed to all bytes in the flow.
+Moreover, more lossy networks were seen to have lower empirical throughput values, which is indeed understandable.
 
 The TCP analyzer also estimates the first 10 Congestion Window sizes for TCP transactions. The Initial Congestion Window is estimated by calculating number of requests
 sent over a flow before the first response is seen. Analyzing all the flows in the given dump, an initial window size of 10 is seen. Moreover, the window size increases
 with every ACK received thereafter by 1, until any loss was observed. This effectively results in doubling the total number of packets that could be in transit in the flow.
 Whenever a loss was seen the congestion window dropped by half if the loss was estimated w.r.t Fast Retransmits otherwise it was set to value 1 if the loss was due to a timeout.
 Number of retransmissions due to Fast Retransmit was seen with the help of Triple Duplicate ACKs for any ACK number. This number was subtracted from the total number of 
-retransmissions seen to get the number of timeout retransmissions. This analysis was seen to be performed at the sender side of network since that side was seen to have varying
-sequence numbers with every requests implying the data sending side. Moreover, it was also seen that the same was the one to initiate a SYN connection, in contrast to a normal
-client - server browser fashion.
+retransmissions seen to get the number of timeout retransmissions(with an error limit of out or order TCP packet). 
+This analysis was seen to be performed at the sender side of network since that side was seen to have varying sequence numbers with every requests implying the data sending side. 
+Moreover, it was also seen that the same was the one to initiate a SYN connection, in contrast to a normal client - server browser fashion.
+
+*Note:* Throughput Metrics are provided in Megabits / sec, RTT is provided in microseconds.
 
 ----------------------------
 **Testing Environment**
